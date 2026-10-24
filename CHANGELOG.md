@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8 — 2026-10-24
+- New voice fairy **Wish Angel**: greets once per session on the first tap/click (or mic tap) with the signature line "I am Wish Angel. Make a wish come true!" in English, followed by a localized line in the selected language (9 languages); cute voice (female, pitch 1.6, rate 1.08, short playful pauses)
+- Wish Angel is now the default narrator (top of the voice picker, e.g. 心愿天使 Wish); the other 13 voices remain
+- Sparkling fairy indicator flutters beside the breathing voice star while Wish speaks
+
 ## v0.7 — 2026-10-24
 - Rebrand: Miracle Code / 奇迹代码 → **Wish Code / 心愿密码** (title, header with localized subtitle, meta & Open Graph tags, disclaimer, read-aloud brand line) in all 9 languages; slogan stays "Make a wish come true"
 - New share button (Web Share API, clipboard fallback) with localized share text
