@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7 — 2026-10-24
+- Rebrand: Miracle Code / 奇迹代码 → **Wish Code / 心愿密码** (title, header with localized subtitle, meta & Open Graph tags, disclaimer, read-aloud brand line) in all 9 languages; slogan stays "Make a wish come true"
+- New share button (Web Share API, clipboard fallback) with localized share text
+- Voice group renamed to 神明与传奇之声 / Divine & legendary voices (9 languages)
+- Repo renamed to j19-plusone/wish-code-20261024
+
 ## v0.6 — 2026-10-24
 - Three new read-aloud personas in 9 languages: Fuxi (伏羲, primordial creator of the bagua; very low, slow, long pauses), Li Chunfeng (李淳风, Tang astronomer-diviner; scholarly, measured), Empress Wu Zetian (武则天; imperial, commanding yet elegant)
 
