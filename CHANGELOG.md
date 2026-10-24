@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9 — 2026-10-24
+- Background music (Jessica's recording): assets/wish_bgm_20261024.mp3 (+ .m4a fallback), 30 s, fade-in 0.3 s / fade-out 1.5 s, 128 kbps.
+- Plays once from the start on every new page load; autoplay attempted, otherwise starts on first tap/click/key. No loop.
+- Floating ♪ mute/unmute toggle (bottom-right), localized aria label in 9 languages, preference remembered.
+- Music ducks to low volume while TTS speaks (Wish greeting, readings) and restores afterwards.
+
 ## v0.8 — 2026-10-24
 - New voice fairy **Wish Angel**: greets once per session on the first tap/click (or mic tap) with the signature line "I am Wish Angel. Make a wish come true!" in English, followed by a localized line in the selected language (9 languages); cute voice (female, pitch 1.6, rate 1.08, short playful pauses)
 - Wish Angel is now the default narrator (top of the voice picker, e.g. 心愿天使 Wish); the other 13 voices remain

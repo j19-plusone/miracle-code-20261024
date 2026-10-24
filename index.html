@@ -91,7 +91,7 @@ ul{padding-left:20px}
 .vstat{max-width:560px;margin:-12px auto 16px;font-size:13px;padding:8px 12px;border-radius:12px;text-align:left}.vstat.live{color:#e3d4ff;background:rgba(143,123,255,.15);border:1px solid rgba(167,139,255,.5)}.vstat.live::before{content:"● ";color:#ff6bd5;animation:blink 1s infinite}.vstat.info{color:#c9cffd}.vstat.err{color:#ffd0d0;background:rgba(160,40,70,.25);border:1px solid rgba(255,120,150,.4)}.vstat.okk{color:#c8ffd9}@keyframes blink{50%{opacity:.2}}.vsel{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#c9cffd}.vsel select,.pr select{background:rgba(10,14,50,.8);border:1px solid #6b74c9;color:#fff;border-radius:14px;padding:6px 8px}.pr{margin-top:10px;font-size:13px;color:#ffe9a8}
 .fairy{position:absolute;top:-16px;right:-12px;font-size:18px;opacity:0;transform:scale(.4) translateY(6px);transition:all .35s;pointer-events:none;filter:drop-shadow(0 0 6px #c9a8ff) drop-shadow(0 0 12px #6f8bff)}.fairy.on{opacity:1;transform:scale(1);animation:flutter 1.2s ease-in-out infinite}@keyframes flutter{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-6px) rotate(8deg)}}.mic.speaking::before{animation-duration:1.4s}
 </style>
-</head><body>
+<style>#bgmBtn{position:fixed;right:14px;bottom:14px;z-index:60;width:38px;height:38px;border-radius:50%;border:1px solid rgba(180,150,255,.45);background:rgba(20,12,50,.55);color:#d9ccff;font-size:16px;cursor:pointer;backdrop-filter:blur(6px);box-shadow:0 0 12px rgba(140,100,255,.35);opacity:.8;transition:opacity .3s}#bgmBtn:hover{opacity:1}#bgmBtn.off{opacity:.45}</style></head><body>
 <canvas id="sky"></canvas>
 <div class="wrap">
  <div class="top"><span class="brand">✦ Wish Code · <span id="brandSub">心愿密码</span></span><select id="langSel" aria-label="Language"></select></div>
@@ -876,7 +876,7 @@ let greetP=null;
 function greet(){if(greetP||sessionStorage.getItem('wc_greeted'))return greetP;sessionStorage.setItem('wc_greeted','1');
  const b=TTS.providers.browser;if(!b.available())return null;fairy(true);
  const o={gender:'f',pitch:ANGEL.pitch,rate:ANGEL.rate,pause:ANGEL.pause,persona:'wish'};
- greetP=b.speak(['I am Wish Angel.','Make a wish come true!'],Object.assign({lang:'en-US'},o))
+ greetP=(window.BGM&&BGM.duck(),b.speak(['I am Wish Angel.','Make a wish come true!'],Object.assign({lang:'en-US'},o)));Promise.resolve(greetP).then(()=>window.BGM&&BGM.unduck(),()=>window.BGM&&BGM.unduck())
   .then(()=>lang==='en'?null:b.speak(chunk(ANGEL.o[lang]),Object.assign({lang:L[lang].voice},o)));
  const done=Promise.race([greetP,new Promise(r=>setTimeout(r,9000))]).finally(()=>fairy(false));greetP=done;return done}
 addEventListener('pointerdown',e=>{if(!e.target.closest('#micBtn'))greet()},{once:true,capture:true});
@@ -943,4 +943,17 @@ function renderKB(){const U=L[lang].ui,rows=KB[lang],sep=lang==='zh'?' ':'';
 const _al=applyLang;
 frame();applyLang();locate();
 window.WishCode={divine,hexFrom,KW,L,HZ,CON,visibleCons,setLang(v){lang=v;projectSky();applyLang()}};
-</script></body></html>
+</script><audio id="bgm" preload="auto" playsinline><source src="assets/wish_bgm_20261024.mp3" type="audio/mpeg"><source src="assets/wish_bgm_20261024.m4a" type="audio/mp4"></audio><button id="bgmBtn" type="button">♪</button>
+<script>(()=>{const A={zh:['静音背景音乐','开启背景音乐'],en:['Mute background music','Unmute background music'],de:['Hintergrundmusik stummschalten','Hintergrundmusik einschalten'],it:['Disattiva musica di sottofondo','Attiva musica di sottofondo'],fr:['Couper la musique de fond','Activer la musique de fond'],es:['Silenciar música de fondo','Activar música de fondo'],pt:['Silenciar música de fundo','Ativar música de fundo'],sv:['Stäng av bakgrundsmusik','Slå på bakgrundsmusik'],fi:['Mykistä taustamusiikki','Ota taustamusiikki käyttöön']};
+const a=document.getElementById('bgm'),b=document.getElementById('bgmBtn'),VOL=.6,DUCK=.12;a.loop=false;a.volume=VOL;let muted=localStorage.getItem('wc_bgm_mute')==='1',started=false,ducked=0;a.muted=muted;
+const lab=()=>{const l=(typeof lang!=='undefined'&&A[lang])?A[lang]:A.en;b.setAttribute('aria-label',muted?l[1]:l[0]);b.title=b.getAttribute('aria-label');b.textContent=muted?'🔇':'♪';b.classList.toggle('off',muted)};lab();
+const evs=['pointerdown','click','keydown','touchstart'];const g=()=>{try_()};
+function try_(){if(started)return;try{a.currentTime=0}catch(e){}const p=a.play();if(p&&p.then)p.then(()=>{started=true;evs.forEach(e=>removeEventListener(e,g,true))}).catch(()=>{});}
+evs.forEach(e=>addEventListener(e,g,true));try_();
+b.onclick=e=>{e.stopPropagation();muted=!muted;a.muted=muted;localStorage.setItem('wc_bgm_mute',muted?'1':'0');lab();if(!muted&&!started)try_()};
+const fade=t=>{const s=a.volume,st=performance.now();const f=n=>{const k=Math.min(1,(n-st)/400);a.volume=s+(t-s)*k;if(k<1)requestAnimationFrame(f)};requestAnimationFrame(f)};
+window.BGM={duck(){if(ducked++===0)fade(DUCK)},unduck(){ducked=Math.max(0,ducked-1);if(!ducked)fade(VOL)},relabel:lab};
+if(typeof TTS!=='undefined'){const sp=TTS.speak.bind(TTS),stp=TTS.stop.bind(TTS);let on=false;const end=()=>{if(on){on=false;BGM.unduck()}};
+TTS.speak=function(){if(!on){on=true;BGM.duck()}const r=sp.apply(this,arguments);Promise.resolve(r).then(end,end);return r};TTS.stop=function(){stp();end()};}
+const ls=document.getElementById('langSel');ls&&ls.addEventListener('change',()=>setTimeout(lab,0));})();</script>
+</body></html>
