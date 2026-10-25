@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10-25
+- Custom domain wishcode.ch (CNAME file, GitHub Pages)
+
 ## v0.9 — 2026-10-24
 - Background music (Jessica's recording): assets/wish_bgm_20261024.mp3 (+ .m4a fallback), 30 s, fade-in 0.3 s / fade-out 1.5 s, 128 kbps.
 - Plays once from the start on every new page load; autoplay attempted, otherwise starts on first tap/click/key. No loop.
