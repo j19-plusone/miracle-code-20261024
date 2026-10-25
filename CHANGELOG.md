@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.1 — 2026-10-25
+- Read-aloud fixed for iPhone/iOS Safari: all sentence chunks are queued synchronously inside the tap (setTimeout-chained speak() was dropped by iOS after the first sentence); no cancel() right before speak (iOS WebKit bug); speech engine unlocked with a silent utterance on the first tap; voices reloaded at speak time, fallback to any voice of the language, else system default.
+- Read-aloud button is now a Play/Stop toggle (🔊 / ⏹), localized in 9 languages.
+- Clear message when no sound starts within 4 s (silent switch, in-app browser) or the browser has no speech support (replaces alert), 9 languages.
+- Wish opening greeting removed (per Jessica); mic button starts recognition directly in the tap (no greeting wait, no async getUserMedia preflight on iOS which lost the gesture).
+- Voice input dimmed and replaced by a "please type / open in browser" hint when SpeechRecognition is missing or in in-app browsers (WeChat, Instagram, Facebook, Line, Grok, Android WebView).
+- Background music keeps ducking while speaking.
+
 ## 2026-10-25
 - Custom domain wishcode.ch (CNAME file, GitHub Pages)
 

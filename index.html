@@ -783,7 +783,7 @@ function render(d){const P=L[lang],U=P.ui,x=build(d),zh=lang==='zh';d._x=x;
  $('home').style.display='none';$('result').style.display='block';
  document.querySelectorAll('.prem button').forEach(b=>b.onclick=()=>{openCat=+b.dataset.c;const l=$('lock');l.style.display='block';l.innerHTML=lockHTML(openCat);bindLock()});
  $('again').onclick=()=>{TTS.stop();last=null;openCat=null;$('result').style.display='none';$('home').style.display='block';scrollTo(0,0)};
- bindLock();$('shareBtn').onclick=async()=>{const url=location.href.split('?')[0]+'?lang='+lang,t=f(U.shareT,{s:d.s});try{if(navigator.share)await navigator.share({title:'Wish Code',text:t,url});else{await navigator.clipboard.writeText(t+' '+url);alert(U.copied)}}catch(e){}};$('voiceSel').value=voiceSel;$('voiceSel').onchange=e=>{voiceSel=e.target.value;localStorage.setItem('mc_voice',voiceSel)};$('spk').onclick=()=>speak(x.skyLine+' '+x.text+' '+U.advLabel+': '+x.A.join('. '))}
+ bindLock();$('shareBtn').onclick=async()=>{const url=location.href.split('?')[0]+'?lang='+lang,t=f(U.shareT,{s:d.s});try{if(navigator.share)await navigator.share({title:'Wish Code',text:t,url});else{await navigator.clipboard.writeText(t+' '+url);alert(U.copied)}}catch(e){}};$('voiceSel').value=voiceSel;$('voiceSel').onchange=e=>{voiceSel=e.target.value;localStorage.setItem('mc_voice',voiceSel)};$('spk').onclick=()=>{if(window.ttsBusy){TTS.stop();return}speak(x.skyLine+' '+x.text+' '+U.advLabel+': '+x.A.join('. '))}}
 // ===== i18n for v0.5 (voice, personas, price) =====
 const V5={
 zh:{vLbl:'声音',fem:'温柔女声',mal:'沉稳男声',gods:'神明与传奇之声',listen:'正在聆听…请说出你的心愿（再点一次结束）',perm:'请在弹窗中允许使用麦克风',denied:'麦克风权限被拒绝：请在浏览器地址栏左侧的权限设置中允许麦克风，然后重试。',nosp:'没有听到声音，请靠近麦克风再试一次。',net:'语音识别服务连接失败（Chrome 需联网使用 Google 语音服务），请检查网络或改用 Safari。',nomic:'未检测到麦克风设备。',https:'语音输入需要 HTTPS 安全连接。',unsup:'此浏览器不支持语音输入。请使用电脑版 Chrome / Edge，或 iPhone/Mac 上的 Safari（需在系统设置中开启“听写/Siri”）。微信等内置浏览器不支持，请用系统浏览器打开。也可以直接打字。',ok:'已记下你的心愿 ✓',err:'语音输入出错：',per:'每条',cur:'币种',demo:'演示模式：不会产生真实扣款。'},
@@ -831,34 +831,45 @@ function bestVoice(code,g){let b=null,bs=-1;for(const v of VOICES){const s=score
 function chunk(t){return t.split(/(?<=[。！？；.!?;])\s*/).map(s=>s.trim()).filter(Boolean).flatMap(s=>s.length>180?s.split(/(?<=[，,:：])\s*/):[s])}
 const TTS={active:'browser',providers:{
  browser:{available:()=>'speechSynthesis'in window,_tok:0,
-  speak(chunks,o){const tok=++this._tok;speechSynthesis.cancel();const v=bestVoice(o.lang,o.gender);
+  speak(chunks,o){const tok=++this._tok;const ss=speechSynthesis;if(ss.speaking||ss.pending)ss.cancel();if(ss.paused)ss.resume();loadVoices();const v=bestVoice(o.lang,o.gender)||bestVoice(o.lang.slice(0,2),o.gender);
    // if no matching-gender voice, pitch carries the gender colour
    const genderMatch=v&&(o.gender==='f'?FEM.test(v.name):MAL.test(v.name));const pitch=genderMatch?o.pitch:(o.gender==='m'?Math.min(o.pitch,.8):Math.max(o.pitch,1.15));
-   return new Promise(res=>{let i=0;const next=()=>{if(tok!==this._tok||i>=chunks.length)return res();const u=new SpeechSynthesisUtterance(chunks[i++]);u.lang=o.lang;if(v)u.voice=v;u.pitch=pitch;u.rate=o.rate;u.onend=()=>setTimeout(next,o.pause);u.onerror=()=>setTimeout(next,50);speechSynthesis.speak(u)};next()})},
+   // v0.9.1: queue every chunk synchronously (iOS only allows speak() inside the tap; setTimeout-chained speak() is dropped)
+   return new Promise(res=>{if(!chunks.length)return res();let left=chunks.length,started=false;const fin=()=>{if(--left<=0||tok!==this._tok)res()};
+    chunks.forEach(c=>{const u=new SpeechSynthesisUtterance(c);u.lang=o.lang;if(v)u.voice=v;u.pitch=Math.max(0.1,Math.min(2,pitch));u.rate=Math.max(0.5,Math.min(1.6,o.rate));u.onstart=()=>{started=true};u.onend=fin;u.onerror=e=>{if(e&&e.error&&!/interrupted|canceled/.test(e.error))console.warn('tts',e.error);fin()};ss.speak(u)});
+    // watchdog: if nothing starts within 4 s the engine is silent (in-app browser / no voices)
+    setTimeout(()=>{if(!started&&tok===this._tok&&!ss.speaking){this.stop();window.ttsMsg&&ttsMsg('silent');res()}},4000)})},
   stop(){this._tok++;speechSynthesis.cancel()}},
  remote:{endpoint:null,available(){return!!this.endpoint},_a:null,
   async speak(chunks,o){const r=await fetch(this.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:chunks.join(' '),lang:o.lang,voice:o.persona,gender:o.gender})});const b=await r.blob();this._a=new Audio(URL.createObjectURL(b));await this._a.play()},
   stop(){this._a&&this._a.pause()}}},
  speak(text,personaId){const p=persona(personaId),P=p.o?p:null;const intro=(P?P.o[lang]+' ':'')+L[lang].ui.brandSay+' ';
   const prov=this.providers[this.active].available()?this.providers[this.active]:this.providers.browser;
-  if(!prov.available())return alert(L[lang].ui.noTTS);
+  if(!prov.available()){window.ttsMsg&&ttsMsg('none');return Promise.resolve()}
   return prov.speak(chunk(intro+text),{lang:L[lang].voice,gender:p.g,pitch:p.pitch,rate:p.rate,pause:p.pause,persona:p.id})},
  stop(){for(const k in this.providers)try{this.providers[k].stop()}catch(e){}}};
-function speak(t){TTS.speak(t,voiceSel)}
+const TM={zh:['停止','此浏览器不支持朗读，请用 Safari 或 Chrome 打开。','没有声音？请关闭 iPhone 静音键、调高音量；微信/App 内置浏览器请点右上角「在浏览器中打开」。'],en:['Stop','Read-aloud isn’t supported in this browser. Please open the page in Safari or Chrome.','No sound? Turn off the iPhone silent switch and raise the volume. In WeChat or other in-app browsers, choose “Open in browser”.'],de:['Stopp','Vorlesen wird in diesem Browser nicht unterstützt. Bitte in Safari oder Chrome öffnen.','Kein Ton? Stummschalter am iPhone aus und lauter stellen. In WeChat/In-App-Browsern „Im Browser öffnen“ wählen.'],it:['Stop','La lettura ad alta voce non è supportata qui. Apri la pagina in Safari o Chrome.','Nessun suono? Disattiva il silenzioso dell’iPhone e alza il volume. In WeChat o browser in-app scegli «Apri nel browser».'],fr:['Stop','La lecture à voix haute n’est pas prise en charge ici. Ouvrez la page dans Safari ou Chrome.','Pas de son ? Désactivez le mode silencieux de l’iPhone et montez le volume. Dans WeChat ou un navigateur intégré, choisissez « Ouvrir dans le navigateur ».'],es:['Parar','La lectura en voz alta no es compatible aquí. Abre la página en Safari o Chrome.','¿Sin sonido? Desactiva el modo silencio del iPhone y sube el volumen. En WeChat u otros navegadores integrados, elige «Abrir en el navegador».'],pt:['Parar','A leitura em voz alta não é suportada aqui. Abra a página no Safari ou Chrome.','Sem som? Desligue o modo silêncio do iPhone e aumente o volume. No WeChat ou noutros navegadores integrados, escolha «Abrir no navegador».'],sv:['Stopp','Uppläsning stöds inte i den här webbläsaren. Öppna sidan i Safari eller Chrome.','Inget ljud? Stäng av iPhones ljudlöst läge och höj volymen. I WeChat eller inbyggda webbläsare: välj ”Öppna i webbläsare”.'],fi:['Pysäytä','Ääneen luku ei toimi tässä selaimessa. Avaa sivu Safarissa tai Chromessa.','Ei ääntä? Poista iPhonen äänetön tila ja lisää äänenvoimakkuutta. WeChatissa tai sovelluksen selaimessa valitse ”Avaa selaimessa”.']};
+window.ttsMsg=k=>{const t=TM[lang]||TM.en;vstatus(k==='none'?t[1]:t[2],'err');const e=$('vstat');e&&e.scrollIntoView({block:'nearest'})};
+function spkLabel(){const b=$('spk');if(!b)return;const t=TM[lang]||TM.en;b.textContent=window.ttsBusy?'⏹ '+t[0]:'🔊 '+L[lang].ui.speak;b.classList.toggle('on',!!window.ttsBusy)}
+function speak(t){window.ttsBusy=true;spkLabel();Promise.resolve(TTS.speak(t,voiceSel)).finally(()=>{window.ttsBusy=false;spkLabel()})}
+// v0.9.1: unlock iOS speech engine on the very first tap (silent utterance spoken inside the gesture)
+addEventListener('pointerdown',()=>{try{if('speechSynthesis'in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u);loadVoices()}}catch(e){}},{once:true,capture:true});
 function voiceSelectHTML(){const U=L[lang].ui;return `<label class="vsel">🎙 ${U.vLbl} <select id="voiceSel"><option value="wish">✨ ${ANGEL.n[lang]}</option><option value="female">${U.fem}</option><option value="male">${U.mal}</option><optgroup label="${U.gods}">${PERS.filter(p=>p!==ANGEL).map(p=>`<option value="${p.id}">${p.n[lang]}</option>`).join('')}</optgroup></select></label>`}
 // ===== Price (demo) =====
 let currency=localStorage.getItem('mc_cur')||(/CH$/i.test(navigator.language||'')||(Intl.DateTimeFormat().resolvedOptions().timeZone||'')==='Europe/Zurich'?'CHF':'EUR');
 const price=()=>new Intl.NumberFormat(L[lang].voice,{style:'currency',currency}).format(9.9);
 // ===== Robust voice input =====
 let rec=null,recOn=false,recTimer=null;
+const UA=navigator.userAgent||'',IOS=/iP(hone|ad|od)/.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),INAPP=/MicroMessenger|WeChat|Instagram|FBAN|FBAV|Line\/|Grok|wv\)|; wv/i.test(UA);
+(function(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR||INAPP){const m=$('micBtn');if(m){m.style.opacity='.35';m.dataset.unsup='1'}}})();
 function vstatus(msg,kind){const e=$('vstat');if(!e)return;e.textContent=msg||'';e.className='vstat'+(kind?' '+kind:'');e.style.display=msg?'block':'none'}
 async function micClick(){const U=L[lang].ui;
  if(recOn){try{rec.stop()}catch(e){}return}
  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
  if(!window.isSecureContext)return vstatus(U.https,'err');
- if(!SR)return vstatus(U.unsup,'err');
+ if(!SR||INAPP){$('wishIn').focus();return vstatus(U.unsup,'err')}
  // explicit permission flow (shows browser prompt; detects denied/no device clearly)
- if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){vstatus(U.perm,'info');
+ if(!IOS&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){vstatus(U.perm,'info');
   try{const s=await navigator.mediaDevices.getUserMedia({audio:true});s.getTracks().forEach(t=>t.stop())}
   catch(e){return vstatus(e.name==='NotFoundError'?U.nomic:U.denied,'err')}}
  TTS.stop();rec=new SR();rec.lang=L[lang].voice;rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=1;
@@ -870,7 +881,7 @@ async function micClick(){const U=L[lang].ui;
  try{rec.start()}catch(e){vstatus(U.err+e.message,'err')}}
 function fairy(on){const e=$('fairy');if(e)e.classList.toggle('on',!!on)}
 const _sp=TTS.speak.bind(TTS);TTS.speak=function(t,id){fairy(persona(id).id==='wish');const pr=_sp(t,id);Promise.resolve(pr).finally(()=>fairy(false));return pr};
-const _st=TTS.stop.bind(TTS);TTS.stop=function(){fairy(false);_st()};
+const _st=TTS.stop.bind(TTS);TTS.stop=function(){fairy(false);_st();window.ttsBusy=false;typeof spkLabel==='function'&&spkLabel()};
 // Wish Angel greeting: once per session, on first user gesture (autoplay policies need a gesture)
 let greetP=null;
 function greet(){if(greetP||sessionStorage.getItem('wc_greeted'))return greetP;sessionStorage.setItem('wc_greeted','1');
@@ -879,8 +890,8 @@ function greet(){if(greetP||sessionStorage.getItem('wc_greeted'))return greetP;s
  greetP=(window.BGM&&BGM.duck(),b.speak(['I am Wish Angel.','Make a wish come true!'],Object.assign({lang:'en-US'},o)));Promise.resolve(greetP).then(()=>window.BGM&&BGM.unduck(),()=>window.BGM&&BGM.unduck())
   .then(()=>lang==='en'?null:b.speak(chunk(ANGEL.o[lang]),Object.assign({lang:L[lang].voice},o)));
  const done=Promise.race([greetP,new Promise(r=>setTimeout(r,9000))]).finally(()=>fairy(false));greetP=done;return done}
-addEventListener('pointerdown',e=>{if(!e.target.closest('#micBtn'))greet()},{once:true,capture:true});
-$('micBtn').onclick=async()=>{const g=greet();if(g&&!recOn)await g;micClick()};
+// v0.9.1: greeting removed per Jessica; mic starts directly in the tap
+$('micBtn').onclick=()=>micClick();
 
 // ===== Real sky: location, sidereal time, alt/az, constellations =====
 const D2R=Math.PI/180, ZRH={lat:47.3769,lon:8.5417};
